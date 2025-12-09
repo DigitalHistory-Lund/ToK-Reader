@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>ToK Reader</title>
+    <script>
+      // GitHub Pages SPA redirect handler
+      // This script takes the current URL and redirects to the root with the path stored in sessionStorage
+      // The root index.html will then restore the path using history.replaceState
+      sessionStorage.redirect = location.href;
+      location.replace(location.origin + location.pathname.split('/').slice(0, -1).join('/') + '/ToK-Reader');
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
