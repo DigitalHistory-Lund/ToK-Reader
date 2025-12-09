@@ -7,10 +7,12 @@ import { SearchPage } from './pages/SearchPage';
 import { ReaderPage } from './pages/ReaderPage';
 
 function App() {
+  const basename = import.meta.env.DEV ? '/' : '/ToK-Reader';
+
   return (
     <ErrorBoundary>
       <DatabaseProvider>
-        <BrowserRouter basename="/ToK-Reader">
+        <BrowserRouter basename={basename}>
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<HomePage />} />

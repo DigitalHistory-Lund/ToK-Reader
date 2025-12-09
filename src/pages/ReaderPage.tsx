@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useDatabase } from '@/hooks/useDatabase';
 import { getUtteranceContext, getUtteranceChain } from '@/lib/database/queries';
 import { UtteranceCard } from '@/components/reader/UtteranceCard';
@@ -13,11 +13,17 @@ export function ReaderPage() {
     utteranceId: string;
   }>();
   const year = parseInt(yearParam || '1920');
+  const navigate = useNavigate();
 
   const { loading: dbLoading, error: dbError } = useDatabase(year);
   const [utterances, setUtterances] = useState<UtteranceWithPerson[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState({ top: false, bottom: false });
+
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+  const bottomSentinelRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const utteranceRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Load initial context
   useEffect(() => {
@@ -112,6 +118,77 @@ export function ReaderPage() {
     }
   };
 
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (!topSentinelRef.current || !bottomSentinelRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            if (entry.target === topSentinelRef.current) {
+              loadPrevious();
+            } else if (entry.target === bottomSentinelRef.current) {
+              loadNext();
+            }
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '200px' }
+    );
+
+    observer.observe(topSentinelRef.current);
+    observer.observe(bottomSentinelRef.current);
+
+    return () => observer.disconnect();
+  }, [utterances, loadingMore]);
+
+  // Update URL based on visible utterance
+  useEffect(() => {
+    if (utterances.length === 0) return;
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const handleScroll = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+
+      timeoutId = setTimeout(() => {
+        // Find the utterance closest to the center of the viewport
+        const viewportCenter = window.innerHeight / 2;
+        let closestUtterance: UtteranceWithPerson | null = null;
+        let closestDistance = Infinity;
+
+        utterances.forEach((utterance) => {
+          const element = utteranceRefs.current.get(utterance.id);
+          if (!element) return;
+
+          const rect = element.getBoundingClientRect();
+          const elementCenter = rect.top + rect.height / 2;
+          const distance = Math.abs(elementCenter - viewportCenter);
+
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestUtterance = utterance;
+          }
+        });
+
+        if (closestUtterance !== null) {
+          const newUtteranceId = (closestUtterance as UtteranceWithPerson).id;
+          if (newUtteranceId !== utteranceId) {
+            // Update URL without triggering navigation
+            navigate(`/${year}/${newUtteranceId}`, { replace: true });
+          }
+        }
+      }, config.scrollDebounceMs);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [utterances, year, utteranceId, navigate]);
+
   if (dbLoading === 'loading') {
     return <LoadingSpinner message={`Loading database for year ${year}...`} />;
   }
@@ -137,7 +214,7 @@ export function ReaderPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div ref={containerRef} className="max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">
           Parliamentary Debate Reader
@@ -147,42 +224,44 @@ export function ReaderPage() {
         </p>
       </div>
 
-      {/* Load Previous Button */}
-      {utterances[0]?.prev && (
-        <div className="mb-4 text-center">
-          <button
-            onClick={loadPrevious}
-            disabled={loadingMore.top}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {loadingMore.top ? 'Loading...' : 'Load Previous'}
-          </button>
-        </div>
-      )}
+      {/* Top sentinel for infinite scroll */}
+      <div ref={topSentinelRef} className="h-4">
+        {loadingMore.top && (
+          <div className="text-center py-2">
+            <LoadingSpinner message="Loading previous..." />
+          </div>
+        )}
+      </div>
 
       {/* Utterances */}
       <div className="space-y-4">
         {utterances.map((utterance) => (
-          <UtteranceCard
+          <div
             key={utterance.id}
-            utterance={utterance}
-            highlighted={utterance.id === utteranceId}
-          />
+            ref={(el) => {
+              if (el) {
+                utteranceRefs.current.set(utterance.id, el);
+              } else {
+                utteranceRefs.current.delete(utterance.id);
+              }
+            }}
+          >
+            <UtteranceCard
+              utterance={utterance}
+              highlighted={utterance.id === utteranceId}
+            />
+          </div>
         ))}
       </div>
 
-      {/* Load Next Button */}
-      {utterances[utterances.length - 1]?.next && (
-        <div className="mt-4 text-center">
-          <button
-            onClick={loadNext}
-            disabled={loadingMore.bottom}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {loadingMore.bottom ? 'Loading...' : 'Load Next'}
-          </button>
-        </div>
-      )}
+      {/* Bottom sentinel for infinite scroll */}
+      <div ref={bottomSentinelRef} className="h-4">
+        {loadingMore.bottom && (
+          <div className="text-center py-2">
+            <LoadingSpinner message="Loading next..." />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
