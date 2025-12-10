@@ -57,7 +57,7 @@ export class SearchEngine {
    * @returns SQL query and bindings
    */
   private buildQuery(params: SearchParams): { sql: string; bindings: any[] } {
-    const { query, party, kvinna_1, kvinna_2, kvinna_3, dateFrom, dateTo } = params;
+    const { query, party, gender, speaker, kvinna_1, kvinna_2, kvinna_3, dateFrom, dateTo } = params;
 
     let sql = `
       SELECT
@@ -87,6 +87,18 @@ export class SearchEngine {
       const placeholders = party.map(() => '?').join(',');
       sql += ` AND p.party IN (${placeholders})`;
       bindings.push(...party);
+    }
+
+    // Gender filter
+    if (gender) {
+      sql += ` AND LOWER(p.gender) = LOWER(?)`;
+      bindings.push(gender);
+    }
+
+    // Speaker filter
+    if (speaker !== undefined) {
+      sql += ` AND p.id = ?`;
+      bindings.push(speaker);
     }
 
     // kvinna_1 filter

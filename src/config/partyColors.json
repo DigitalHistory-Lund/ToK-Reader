@@ -1,0 +1,11 @@
+{
+  "parties": {
+    "Socialdemokraterna": { "color": "#E02020" },
+    "Bondeförbundet": { "color": "#166534" },
+    "Liberala": { "color": "#3B82F6" },
+    "Höger": { "color": "#4338CA" },
+    "Vänsterpartiet": { "color": "#7C2D12" },
+    "Nationella": { "color": "#6366F1" }
+  },
+  "default": { "color": "#6B7280" }
+}

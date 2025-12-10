@@ -1,4 +1,6 @@
-import { formatDate, normalizePartyName } from '@/lib/utils/urlHelpers';
+import { Link } from 'react-router-dom';
+import { formatDate } from '@/lib/utils/urlHelpers';
+import { getPartyColor, getContrastTextColor } from '@/lib/utils/partyColors';
 import type { UtteranceWithPerson } from '@/types/database';
 
 interface UtteranceCardProps {
@@ -7,31 +9,56 @@ interface UtteranceCardProps {
 }
 
 export function UtteranceCard({ utterance, highlighted }: UtteranceCardProps) {
-  const partyColor = normalizePartyName(utterance.person_party);
+  const partyColor = getPartyColor(utterance.person_party);
+  const textColor = getContrastTextColor(partyColor);
+
+  const getGenderSymbol = (gender: string | null): string => {
+    if (!gender) return '';
+    const lower = gender.toLowerCase();
+    if (lower === 'man' || lower === 'män') return '♂';
+    if (lower === 'woman' || lower === 'kvinna') return '♀';
+    return gender;
+  };
+
+  const getGenderStyle = (gender: string | null): string => {
+    if (!gender) return 'text-gray-600';
+    const lower = gender.toLowerCase();
+    if (lower === 'man' || lower === 'män') return 'text-blue-600 font-bold text-lg';
+    if (lower === 'woman' || lower === 'kvinna') return 'text-red-600 font-bold text-lg';
+    return 'text-gray-600';
+  };
 
   return (
     <div
       className={`border-l-4 bg-white rounded-lg shadow-sm p-6 mb-4 ${
-        highlighted
-          ? 'border-blue-500 bg-blue-50'
-          : `border-party-${partyColor} border-gray-300`
+        highlighted ? 'border-blue-500 bg-blue-50' : ''
       }`}
+      style={!highlighted ? { borderLeftColor: partyColor } : {}}
     >
       {/* Metadata */}
       <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
-        <div className="font-semibold text-gray-800">
+        <Link
+          to={`/search?year=${utterance.year}&speaker=${utterance.person_id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+          title={`View all utterances by ${utterance.person_name}`}
+        >
           {utterance.person_name}
-        </div>
+        </Link>
 
         {utterance.person_party && (
-          <span className={`px-3 py-1 rounded-full text-white bg-party-${partyColor} bg-gray-600 text-xs font-semibold`}>
+          <span
+            className="px-3 py-1 rounded-full text-xs font-semibold"
+            style={{ backgroundColor: partyColor, color: textColor }}
+          >
             {utterance.person_party}
           </span>
         )}
 
         {utterance.person_gender && (
-          <span className="text-gray-600">
-            {utterance.person_gender}
+          <span className={getGenderStyle(utterance.person_gender)} title={utterance.person_gender}>
+            {getGenderSymbol(utterance.person_gender)}
           </span>
         )}
 

@@ -5,6 +5,8 @@ export interface SearchParams {
   year: number;
   query?: string;
   party?: string[];
+  gender?: string;
+  speaker?: number;
   kvinna_1?: boolean;
   kvinna_2?: boolean;
   kvinna_3?: boolean;

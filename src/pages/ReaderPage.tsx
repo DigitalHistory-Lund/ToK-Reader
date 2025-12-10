@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDatabase } from '@/hooks/useDatabase';
-import { getUtteranceContext, getUtteranceChain } from '@/lib/database/queries';
+import { getUtteranceContext, getUtteranceChain, getPreviousExchange, getNextExchange, getFirstUtterance, getLastExchange, getPreviousKvinnaUtterance, getNextKvinnaUtterance, getPreviousFemaleUtterance, getNextFemaleUtterance, getFirstKvinnaUtterance, getLastKvinnaUtterance, getFirstFemaleUtterance, getLastFemaleUtterance } from '@/lib/database/queries';
 import { UtteranceCard } from '@/components/reader/UtteranceCard';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import type { UtteranceWithPerson } from '@/types/database';
 import { config } from '@/lib/utils/config';
+import { formatDate } from '@/lib/utils/urlHelpers';
 
 export function ReaderPage() {
   const { year: yearParam, utteranceId } = useParams<{
@@ -118,6 +119,60 @@ export function ReaderPage() {
     }
   };
 
+  // Navigate to previous exchange
+  const handlePrevious = async () => {
+    if (!utteranceId) return;
+
+    try {
+      const prevExchange = await getPreviousExchange(year, utteranceId);
+
+      if (prevExchange) {
+        // Found previous exchange in same year
+        navigate(`/${year}/${prevExchange.id}`);
+      } else {
+        // No previous exchange in this year - try last exchange of previous year
+        const prevYear = year - 1;
+        try {
+          const lastExchangeOfPrevYear = await getLastExchange(prevYear);
+          if (lastExchangeOfPrevYear) {
+            navigate(`/${prevYear}/${lastExchangeOfPrevYear.id}`);
+          }
+        } catch (error) {
+          console.error('Previous year not available:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to navigate to previous exchange:', error);
+    }
+  };
+
+  // Navigate to next exchange
+  const handleNext = async () => {
+    if (!utteranceId) return;
+
+    try {
+      const nextExchange = await getNextExchange(year, utteranceId);
+
+      if (nextExchange) {
+        // Found next exchange in same year
+        navigate(`/${year}/${nextExchange.id}`);
+      } else {
+        // No next exchange in this year - try next year
+        const nextYear = year + 1;
+        try {
+          const firstOfNextYear = await getFirstUtterance(nextYear);
+          if (firstOfNextYear) {
+            navigate(`/${nextYear}/${firstOfNextYear.id}`);
+          }
+        } catch (error) {
+          console.error('Next year not available:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to navigate to next exchange:', error);
+    }
+  };
+
   // Intersection Observer for infinite scroll
   useEffect(() => {
     if (!topSentinelRef.current || !bottomSentinelRef.current) return;
@@ -143,51 +198,151 @@ export function ReaderPage() {
     return () => observer.disconnect();
   }, [utterances, loadingMore]);
 
-  // Update URL based on visible utterance
-  useEffect(() => {
-    if (utterances.length === 0) return;
+  // Handle utterance card click
+  const handleUtteranceClick = (clickedUtteranceId: string) => {
+    if (clickedUtteranceId !== utteranceId) {
+      navigate(`/${year}/${clickedUtteranceId}`, { replace: true });
+    }
+  };
 
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  // Navigate to previous kvinna utterance
+  const handlePreviousKvinna = async () => {
+    if (!utteranceId) return;
 
-    const handleScroll = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-
-      timeoutId = setTimeout(() => {
-        // Find the utterance closest to the center of the viewport
-        const viewportCenter = window.innerHeight / 2;
-        let closestUtterance: UtteranceWithPerson | null = null;
-        let closestDistance = Infinity;
-
-        utterances.forEach((utterance) => {
-          const element = utteranceRefs.current.get(utterance.id);
-          if (!element) return;
-
-          const rect = element.getBoundingClientRect();
-          const elementCenter = rect.top + rect.height / 2;
-          const distance = Math.abs(elementCenter - viewportCenter);
-
-          if (distance < closestDistance) {
-            closestDistance = distance;
-            closestUtterance = utterance;
-          }
-        });
-
-        if (closestUtterance !== null) {
-          const newUtteranceId = (closestUtterance as UtteranceWithPerson).id;
-          if (newUtteranceId !== utteranceId) {
-            // Update URL without triggering navigation
-            navigate(`/${year}/${newUtteranceId}`, { replace: true });
+    try {
+      const prevKvinna = await getPreviousKvinnaUtterance(year, utteranceId);
+      if (prevKvinna) {
+        // Found previous kvinna in same year
+        navigate(`/${year}/${prevKvinna.id}`);
+      } else {
+        // No previous kvinna in this year - try previous years
+        // Keep trying earlier years until we find one with kvinna utterances
+        for (let tryYear = year - 1; tryYear >= 1867; tryYear--) {
+          try {
+            const lastKvinnaOfPrevYear = await getLastKvinnaUtterance(tryYear);
+            if (lastKvinnaOfPrevYear) {
+              navigate(`/${tryYear}/${lastKvinnaOfPrevYear.id}`);
+              return;
+            }
+          } catch (error) {
+            // Year database not available, continue to next year
+            continue;
           }
         }
-      }, config.scrollDebounceMs);
-    };
+        console.log('No previous kvinna utterance found');
+      }
+    } catch (error) {
+      console.error('Failed to navigate to previous kvinna utterance:', error);
+    }
+  };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [utterances, year, utteranceId, navigate]);
+  // Navigate to next kvinna utterance
+  const handleNextKvinna = async () => {
+    if (!utteranceId) return;
+
+    try {
+      const nextKvinna = await getNextKvinnaUtterance(year, utteranceId);
+      if (nextKvinna) {
+        // Found next kvinna in same year
+        navigate(`/${year}/${nextKvinna.id}`);
+      } else {
+        // No next kvinna in this year - try future years
+        // Keep trying later years until we find one with kvinna utterances
+        for (let tryYear = year + 1; tryYear <= 2024; tryYear++) {
+          try {
+            const firstKvinnaOfNextYear = await getFirstKvinnaUtterance(tryYear);
+            if (firstKvinnaOfNextYear) {
+              navigate(`/${tryYear}/${firstKvinnaOfNextYear.id}`);
+              return;
+            }
+          } catch (error) {
+            // Year database not available, continue to next year
+            continue;
+          }
+        }
+        console.log('No next kvinna utterance found');
+      }
+    } catch (error) {
+      console.error('Failed to navigate to next kvinna utterance:', error);
+    }
+  };
+
+  // Navigate to previous female speaker utterance
+  const handlePreviousFemale = async () => {
+    if (!utteranceId) return;
+
+    try {
+      const prevFemale = await getPreviousFemaleUtterance(year, utteranceId);
+      if (prevFemale) {
+        // Found previous female speaker in same year
+        navigate(`/${year}/${prevFemale.id}`);
+      } else {
+        // No previous female speaker in this year - try previous years
+        // Keep trying earlier years until we find one with female speakers
+        for (let tryYear = year - 1; tryYear >= 1867; tryYear--) {
+          try {
+            const lastFemaleOfPrevYear = await getLastFemaleUtterance(tryYear);
+            if (lastFemaleOfPrevYear) {
+              navigate(`/${tryYear}/${lastFemaleOfPrevYear.id}`);
+              return;
+            }
+          } catch (error) {
+            // Year database not available, continue to next year
+            continue;
+          }
+        }
+        console.log('No previous female speaker utterance found');
+      }
+    } catch (error) {
+      console.error('Failed to navigate to previous female utterance:', error);
+    }
+  };
+
+  // Navigate to next female speaker utterance
+  const handleNextFemale = async () => {
+    if (!utteranceId) return;
+
+    try {
+      const nextFemale = await getNextFemaleUtterance(year, utteranceId);
+      if (nextFemale) {
+        // Found next female speaker in same year
+        navigate(`/${year}/${nextFemale.id}`);
+      } else {
+        // No next female speaker in this year - try future years
+        // Keep trying later years until we find one with female speakers
+        for (let tryYear = year + 1; tryYear <= 2024; tryYear++) {
+          try {
+            const firstFemaleOfNextYear = await getFirstFemaleUtterance(tryYear);
+            if (firstFemaleOfNextYear) {
+              navigate(`/${tryYear}/${firstFemaleOfNextYear.id}`);
+              return;
+            }
+          } catch (error) {
+            // Year database not available, continue to next year
+            continue;
+          }
+        }
+        console.log('No next female speaker utterance found');
+      }
+    } catch (error) {
+      console.error('Failed to navigate to next female utterance:', error);
+    }
+  };
+
+  // Scroll to selected utterance when URL changes
+  useEffect(() => {
+    if (!utteranceId || utterances.length === 0) return;
+
+    // Wait a bit for the DOM to update
+    const timeoutId = setTimeout(() => {
+      const element = utteranceRefs.current.get(utteranceId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [utteranceId, utterances]);
 
   if (dbLoading === 'loading') {
     return <LoadingSpinner message={`Loading database for year ${year}...`} />;
@@ -215,13 +370,72 @@ export function ReaderPage() {
 
   return (
     <div ref={containerRef} className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          Parliamentary Debate Reader
-        </h1>
-        <p className="text-gray-600">
-          Year: {year} | Utterance: {utteranceId}
-        </p>
+      {/* Sticky Header with Navigation */}
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm mb-6 -mx-4 px-4 py-4">
+        <div className="max-w-4xl mx-auto">
+
+
+          {/* Exchange Navigation */}
+          <div className="flex justify-between items-center mb-2">
+            <button
+              onClick={handlePrevious}
+              className="px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <span>←</span>
+              <span>Exchange</span>
+            </button>
+            <p className="text-gray-600 font-medium">
+              Parliamentary Debate Reader
+            </p>
+            <button
+              onClick={handleNext}
+              className="px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <span>Exchange</span>
+              <span>→</span>
+            </button>
+          </div>
+
+          {/* Kvinna Navigation */}
+          <div className="flex justify-between items-center mb-2">
+            <button
+              onClick={handlePreviousKvinna}
+              className="px-3 py-0.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-sm"
+            >
+              <span>←</span>
+              <span>Kvinna</span>
+            </button>
+            <span className="text-sm text-gray-500">{utteranceId}</span>
+            <button
+              onClick={handleNextKvinna}
+              className="px-3 py-0.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 text-sm"
+            >
+              <span>Kvinna</span>
+              <span>→</span>
+            </button>
+          </div>
+
+          {/* Female Speaker Navigation */}
+          <div className="flex justify-between items-center">
+            <button
+              onClick={handlePreviousFemale}
+              className="px-3 py-0.5 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors flex items-center gap-2 text-sm"
+            >
+              <span>←</span>
+              <span>♀ Speaker</span>
+            </button>
+            <span className="text-sm text-gray-500">{utterances.find(u => u.id === utteranceId)?.date
+              ? formatDate(utterances.find(u => u.id === utteranceId)!.date)
+              : `Year: ${year}`}</span>
+            <button
+              onClick={handleNextFemale}
+              className="px-3 py-0.5 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors flex items-center gap-2 text-sm"
+            >
+              <span>♀ Speaker</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Top sentinel for infinite scroll */}
@@ -245,6 +459,8 @@ export function ReaderPage() {
                 utteranceRefs.current.delete(utterance.id);
               }
             }}
+            onClick={() => handleUtteranceClick(utterance.id)}
+            className="cursor-pointer"
           >
             <UtteranceCard
               utterance={utterance}

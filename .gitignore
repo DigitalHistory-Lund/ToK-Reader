@@ -15,7 +15,6 @@ dbs/
 .vite/
 .turbo/
 
-
 # Environment variables
 .env
 .env.local

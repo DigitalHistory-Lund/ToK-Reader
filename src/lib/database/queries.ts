@@ -144,6 +144,393 @@ export async function getDateRange(
 }
 
 /**
+ * Get the start of the exchange containing this utterance
+ * (Follow prev links until we hit null)
+ * @param year Year of the database
+ * @param utteranceId ID of any utterance in the exchange
+ * @returns First utterance of the exchange
+ */
+export async function getExchangeStart(year: number, utteranceId: string): Promise<UtteranceWithPerson | null> {
+  let currentId = utteranceId;
+  let utterance = await getUtterance(year, currentId);
+
+  if (!utterance) return null;
+
+  // Follow prev links until we reach the start (prev === null)
+  while (utterance.prev) {
+    const prevUtterance = await getUtterance(year, utterance.prev);
+    if (!prevUtterance) break; // Broken link
+    utterance = prevUtterance;
+  }
+
+  return utterance;
+}
+
+/**
+ * Get the first utterance of the previous exchange
+ * @param year Year of the database
+ * @param currentUtteranceId Current utterance ID
+ * @returns First utterance of previous exchange or null
+ */
+export async function getPreviousExchange(year: number, currentUtteranceId: string): Promise<UtteranceWithPerson | null> {
+  // Find the start of the current exchange
+  const currentExchangeStart = await getExchangeStart(year, currentUtteranceId);
+  if (!currentExchangeStart) return null;
+
+  // Find utterances that start an exchange (prev IS NULL) before this one
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    WHERE u.prev IS NULL
+      AND (u.date < ? OR (u.date = ? AND u.id < ?))
+    ORDER BY u.date DESC, u.id DESC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql, [
+    currentExchangeStart.date,
+    currentExchangeStart.date,
+    currentExchangeStart.id
+  ]);
+
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the first utterance of the next exchange
+ * @param year Year of the database
+ * @param currentUtteranceId Current utterance ID
+ * @returns First utterance of next exchange or null
+ */
+export async function getNextExchange(year: number, currentUtteranceId: string): Promise<UtteranceWithPerson | null> {
+  // Find the start of the current exchange
+  const currentExchangeStart = await getExchangeStart(year, currentUtteranceId);
+  if (!currentExchangeStart) return null;
+
+  // Find utterances that start an exchange (prev IS NULL) after this one
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    WHERE u.prev IS NULL
+      AND (u.date > ? OR (u.date = ? AND u.id > ?))
+    ORDER BY u.date ASC, u.id ASC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql, [
+    currentExchangeStart.date,
+    currentExchangeStart.date,
+    currentExchangeStart.id
+  ]);
+
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the first utterance of a year
+ * @param year Year of the database
+ * @returns First utterance or null
+ */
+export async function getFirstUtterance(year: number): Promise<UtteranceWithPerson | null> {
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    ORDER BY u.date ASC, u.id ASC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql);
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the last utterance of a year
+ * @param year Year of the database
+ * @returns Last utterance or null
+ */
+export async function getLastUtterance(year: number): Promise<UtteranceWithPerson | null> {
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    ORDER BY u.date DESC, u.id DESC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql);
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the start of the last exchange in a year
+ * @param year Year of the database
+ * @returns First utterance of the last exchange or null
+ */
+export async function getLastExchange(year: number): Promise<UtteranceWithPerson | null> {
+  // First, get the last utterance of the year
+  const lastUtterance = await getLastUtterance(year);
+  if (!lastUtterance) return null;
+
+  // Then find the start of that utterance's exchange
+  return await getExchangeStart(year, lastUtterance.id);
+}
+
+/**
+ * Get the previous utterance with any kvinna tag
+ * @param year Year of the database
+ * @param currentUtteranceId Current utterance ID
+ * @returns Previous kvinna utterance or null
+ */
+export async function getPreviousKvinnaUtterance(year: number, currentUtteranceId: string): Promise<UtteranceWithPerson | null> {
+  const currentUtterance = await getUtterance(year, currentUtteranceId);
+  if (!currentUtterance) return null;
+
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    WHERE (u.kvinna_1 = 1 OR u.kvinna_2 = 1 OR u.kvinna_3 = 1)
+      AND (u.date < ? OR (u.date = ? AND u.id < ?))
+    ORDER BY u.date DESC, u.id DESC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql, [
+    currentUtterance.date,
+    currentUtterance.date,
+    currentUtterance.id
+  ]);
+
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the next utterance with any kvinna tag
+ * @param year Year of the database
+ * @param currentUtteranceId Current utterance ID
+ * @returns Next kvinna utterance or null
+ */
+export async function getNextKvinnaUtterance(year: number, currentUtteranceId: string): Promise<UtteranceWithPerson | null> {
+  const currentUtterance = await getUtterance(year, currentUtteranceId);
+  if (!currentUtterance) return null;
+
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    WHERE (u.kvinna_1 = 1 OR u.kvinna_2 = 1 OR u.kvinna_3 = 1)
+      AND (u.date > ? OR (u.date = ? AND u.id > ?))
+    ORDER BY u.date ASC, u.id ASC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql, [
+    currentUtterance.date,
+    currentUtterance.date,
+    currentUtterance.id
+  ]);
+
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the previous utterance by a female speaker
+ * @param year Year of the database
+ * @param currentUtteranceId Current utterance ID
+ * @returns Previous female speaker utterance or null
+ */
+export async function getPreviousFemaleUtterance(year: number, currentUtteranceId: string): Promise<UtteranceWithPerson | null> {
+  const currentUtterance = await getUtterance(year, currentUtteranceId);
+  if (!currentUtterance) return null;
+
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    WHERE LOWER(p.gender) IN ('woman', 'kvinna')
+      AND (u.date < ? OR (u.date = ? AND u.id < ?))
+    ORDER BY u.date DESC, u.id DESC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql, [
+    currentUtterance.date,
+    currentUtterance.date,
+    currentUtterance.id
+  ]);
+
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the next utterance by a female speaker
+ * @param year Year of the database
+ * @param currentUtteranceId Current utterance ID
+ * @returns Next female speaker utterance or null
+ */
+export async function getNextFemaleUtterance(year: number, currentUtteranceId: string): Promise<UtteranceWithPerson | null> {
+  const currentUtterance = await getUtterance(year, currentUtteranceId);
+  if (!currentUtterance) return null;
+
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    WHERE LOWER(p.gender) IN ('woman', 'kvinna')
+      AND (u.date > ? OR (u.date = ? AND u.id > ?))
+    ORDER BY u.date ASC, u.id ASC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql, [
+    currentUtterance.date,
+    currentUtterance.date,
+    currentUtterance.id
+  ]);
+
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the first utterance with any kvinna tag in a year
+ * @param year Year of the database
+ * @returns First kvinna utterance or null
+ */
+export async function getFirstKvinnaUtterance(year: number): Promise<UtteranceWithPerson | null> {
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    WHERE (u.kvinna_1 = 1 OR u.kvinna_2 = 1 OR u.kvinna_3 = 1)
+    ORDER BY u.date ASC, u.id ASC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql);
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the last utterance with any kvinna tag in a year
+ * @param year Year of the database
+ * @returns Last kvinna utterance or null
+ */
+export async function getLastKvinnaUtterance(year: number): Promise<UtteranceWithPerson | null> {
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    WHERE (u.kvinna_1 = 1 OR u.kvinna_2 = 1 OR u.kvinna_3 = 1)
+    ORDER BY u.date DESC, u.id DESC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql);
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the first utterance by a female speaker in a year
+ * @param year Year of the database
+ * @returns First female speaker utterance or null
+ */
+export async function getFirstFemaleUtterance(year: number): Promise<UtteranceWithPerson | null> {
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    WHERE LOWER(p.gender) IN ('woman', 'kvinna')
+    ORDER BY u.date ASC, u.id ASC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql);
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
+ * Get the last utterance by a female speaker in a year
+ * @param year Year of the database
+ * @returns Last female speaker utterance or null
+ */
+export async function getLastFemaleUtterance(year: number): Promise<UtteranceWithPerson | null> {
+  const sql = `
+    SELECT
+      u.*,
+      p.name as person_name,
+      p.gender as person_gender,
+      p.party as person_party
+    FROM utterance u
+    JOIN person p ON u.person_id = p.id
+    WHERE LOWER(p.gender) IN ('woman', 'kvinna')
+    ORDER BY u.date DESC, u.id DESC
+    LIMIT 1
+  `;
+
+  const results = await databaseManager.executeQuery(year, sql);
+  if (results.length === 0) return null;
+  return mapRowToUtterance(results[0]);
+}
+
+/**
  * Map a database row to UtteranceWithPerson
  * @param row Raw database row
  * @returns Mapped utterance object

@@ -30,6 +30,13 @@ export function SearchPage() {
   const [kvinna3, setKvinna3] = useState<boolean | undefined>(
     searchParams.get('kvinna_3') === '1' ? true : searchParams.get('kvinna_3') === '0' ? false : undefined
   );
+  const [selectedGender, setSelectedGender] = useState<string | undefined>(
+    searchParams.get('gender') || undefined
+  );
+  const [selectedSpeaker, setSelectedSpeaker] = useState<number | undefined>(
+    searchParams.get('speaker') ? parseInt(searchParams.get('speaker')!) : undefined
+  );
+  const [speakerName, setSpeakerName] = useState<string>('');
 
   // Load parties when database is ready
   useEffect(() => {
@@ -37,6 +44,14 @@ export function SearchPage() {
       getParties(year).then(setParties);
     }
   }, [year, dbLoading]);
+
+  // Get speaker name from results
+  useEffect(() => {
+    if (selectedSpeaker && results.length > 0) {
+      const result = results.find(r => r.person_id === selectedSpeaker);
+      if (result) setSpeakerName(result.person_name);
+    }
+  }, [selectedSpeaker, results]);
 
   // Perform search
   useEffect(() => {
@@ -49,6 +64,8 @@ export function SearchPage() {
           year,
           query: query || undefined,
           party: selectedParties.length > 0 ? selectedParties : undefined,
+          gender: selectedGender,
+          speaker: selectedSpeaker,
           kvinna_1: kvinna1,
           kvinna_2: kvinna2,
           kvinna_3: kvinna3,
@@ -62,13 +79,15 @@ export function SearchPage() {
     };
 
     performSearch();
-  }, [year, query, selectedParties, kvinna1, kvinna2, kvinna3, dbLoading]);
+  }, [year, query, selectedParties, selectedGender, selectedSpeaker, kvinna1, kvinna2, kvinna3, dbLoading]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
     params.set('year', year.toString());
     if (query) params.set('query', query);
     selectedParties.forEach((p) => params.append('party', p));
+    if (selectedGender) params.set('gender', selectedGender);
+    if (selectedSpeaker) params.set('speaker', selectedSpeaker.toString());
     if (kvinna1 !== undefined) params.set('kvinna_1', kvinna1 ? '1' : '0');
     if (kvinna2 !== undefined) params.set('kvinna_2', kvinna2 ? '1' : '0');
     if (kvinna3 !== undefined) params.set('kvinna_3', kvinna3 ? '1' : '0');
@@ -134,6 +153,22 @@ export function SearchPage() {
             </select>
           </div>
 
+          {/* Gender Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Gender
+            </label>
+            <select
+              value={selectedGender || ''}
+              onChange={(e) => setSelectedGender(e.target.value || undefined)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All</option>
+              <option value="man">Male (♂)</option>
+              <option value="woman">Female (♀)</option>
+            </select>
+          </div>
+
           {/* Kvinna Filters */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -184,6 +219,24 @@ export function SearchPage() {
           Search
         </button>
       </div>
+
+      {/* Speaker Filter Display */}
+      {selectedSpeaker && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <span className="text-sm text-blue-800">
+            Filtering by speaker: <strong>{speakerName || `ID: ${selectedSpeaker}`}</strong>
+          </span>
+          <button
+            onClick={() => {
+              setSelectedSpeaker(undefined);
+              setSpeakerName('');
+            }}
+            className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
+          >
+            ✕ Clear
+          </button>
+        </div>
+      )}
 
       {/* Results */}
       <div className="bg-white rounded-lg shadow-md p-6">
