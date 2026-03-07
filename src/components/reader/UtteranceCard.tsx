@@ -6,9 +6,10 @@ import type { UtteranceWithPerson } from '@/types/database';
 interface UtteranceCardProps {
   utterance: UtteranceWithPerson;
   highlighted?: boolean;
+  index?: number;
 }
 
-export function UtteranceCard({ utterance, highlighted }: UtteranceCardProps) {
+export function UtteranceCard({ utterance, highlighted, index = 0 }: UtteranceCardProps) {
   const partyColor = getPartyColor(utterance.person_party);
   const textColor = getContrastTextColor(partyColor);
 
@@ -33,7 +34,11 @@ export function UtteranceCard({ utterance, highlighted }: UtteranceCardProps) {
       className={`border-l-4 bg-white rounded-lg shadow-sm p-6 mb-4 ${
         highlighted ? 'border-blue-500 bg-blue-50' : ''
       }`}
-      style={!highlighted ? { borderLeftColor: partyColor } : {}}
+      style={{
+        ...(!highlighted ? { borderLeftColor: partyColor } : {}),
+        marginLeft: index % 2 === 1 ? '10rem' : '0',
+        marginRight: index % 2 === 0 ? '10rem' : '0',
+      }}
     >
       {/* Metadata */}
       <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
@@ -93,7 +98,7 @@ export function UtteranceCard({ utterance, highlighted }: UtteranceCardProps) {
       )}
 
       {/* Content */}
-      <div className="text-gray-700 leading-relaxed prose max-w-none">
+      <div className="text-gray-700 leading-relaxed prose max-w-none whitespace-pre-wrap max-h-64 overflow-y-auto">
         {utterance.content}
       </div>
     </div>

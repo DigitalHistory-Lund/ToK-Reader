@@ -449,7 +449,7 @@ export function ReaderPage() {
 
       {/* Utterances */}
       <div className="space-y-4">
-        {utterances.map((utterance) => (
+        {utterances.map((utterance, index) => (
           <div
             key={utterance.id}
             ref={(el) => {
@@ -465,6 +465,7 @@ export function ReaderPage() {
             <UtteranceCard
               utterance={utterance}
               highlighted={utterance.id === utteranceId}
+              index={index}
             />
           </div>
         ))}

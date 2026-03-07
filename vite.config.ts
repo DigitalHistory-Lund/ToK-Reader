@@ -3,9 +3,9 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, mode }) => ({
   plugins: [react()],
-  base: command === 'serve' ? '/' : '/ToK-Reader/',
+  base: command === 'serve' && mode !== 'production' ? '/' : '/ToK-Reader/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

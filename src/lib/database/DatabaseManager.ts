@@ -166,6 +166,10 @@ export class DatabaseManager {
     // Initialize database
     const db = new this.SQL.Database(data);
 
+    // Break prev/next links every ~100 utterances to create page boundaries
+    db.run(`UPDATE utterance SET next = NULL WHERE rowid % 100 = 0`);
+    db.run(`UPDATE utterance SET prev = NULL WHERE rowid % 100 = 1 AND rowid > 1`);
+
     // Store in memory cache
     this.memoryCache.set(year, db);
     this.updateLRU(year);
