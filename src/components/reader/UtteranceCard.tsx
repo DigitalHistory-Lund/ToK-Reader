@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/urlHelpers';
 import { getPartyColor, getContrastTextColor } from '@/lib/utils/partyColors';
+import { getChamberLabel } from '@/lib/utils/chamber';
 import type { UtteranceWithPerson } from '@/types/database';
 
 interface UtteranceCardProps {
@@ -70,6 +71,12 @@ export function UtteranceCard({ utterance, highlighted, index = 0 }: UtteranceCa
         <span className="text-gray-500">
           {formatDate(utterance.date)}
         </span>
+
+        {getChamberLabel(utterance.kammare) && (
+          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+            {getChamberLabel(utterance.kammare)}
+          </span>
+        )}
 
         <span className="text-xs text-gray-400 font-mono">
           {utterance.id}

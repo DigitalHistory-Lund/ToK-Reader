@@ -17,6 +17,7 @@ export interface Utterance {
   person_id: number;
   year: number;
   date: number; // YYYYMMDD format
+  kammare: number | null;
   kvinna_1: boolean;
   kvinna_2: boolean;
   kvinna_3: boolean;

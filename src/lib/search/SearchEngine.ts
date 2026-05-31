@@ -32,6 +32,7 @@ export class SearchEngine {
         person_id: row.person_id,
         year: row.year,
         date: row.date,
+        kammare: row.kammare ?? null,
         kvinna_1: Boolean(row.kvinna_1),
         kvinna_2: Boolean(row.kvinna_2),
         kvinna_3: Boolean(row.kvinna_3),
@@ -57,7 +58,7 @@ export class SearchEngine {
    * @returns SQL query and bindings
    */
   private buildQuery(params: SearchParams): { sql: string; bindings: any[] } {
-    const { query, party, gender, speaker, kvinna_1, kvinna_2, kvinna_3, dateFrom, dateTo } = params;
+    const { query, party, gender, speaker, kammare, kvinna_1, kvinna_2, kvinna_3, dateFrom, dateTo } = params;
 
     let sql = `
       SELECT
@@ -117,6 +118,12 @@ export class SearchEngine {
     if (kvinna_3 !== undefined) {
       sql += ` AND u.kvinna_3 = ?`;
       bindings.push(kvinna_3 ? 1 : 0);
+    }
+
+    // Chamber filter
+    if (kammare !== undefined) {
+      sql += ` AND u.kammare = ?`;
+      bindings.push(kammare);
     }
 
     // Date range filter

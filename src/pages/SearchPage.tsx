@@ -5,6 +5,7 @@ import { searchEngine } from '@/lib/search/SearchEngine';
 import { getParties } from '@/lib/database/queries';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatDate, truncateText } from '@/lib/utils/urlHelpers';
+import { getChamberLabel } from '@/lib/utils/chamber';
 import type { SearchResult } from '@/types/search';
 
 export function SearchPage() {
@@ -36,6 +37,9 @@ export function SearchPage() {
   const [selectedSpeaker, setSelectedSpeaker] = useState<number | undefined>(
     searchParams.get('speaker') ? parseInt(searchParams.get('speaker')!) : undefined
   );
+  const [selectedKammare, setSelectedKammare] = useState<number | undefined>(
+    searchParams.get('kammare') ? parseInt(searchParams.get('kammare')!) : undefined
+  );
   const [speakerName, setSpeakerName] = useState<string>('');
 
   // Load parties when database is ready
@@ -66,6 +70,7 @@ export function SearchPage() {
           party: selectedParties.length > 0 ? selectedParties : undefined,
           gender: selectedGender,
           speaker: selectedSpeaker,
+          kammare: selectedKammare,
           kvinna_1: kvinna1,
           kvinna_2: kvinna2,
           kvinna_3: kvinna3,
@@ -79,7 +84,7 @@ export function SearchPage() {
     };
 
     performSearch();
-  }, [year, query, selectedParties, selectedGender, selectedSpeaker, kvinna1, kvinna2, kvinna3, dbLoading]);
+  }, [year, query, selectedParties, selectedGender, selectedSpeaker, selectedKammare, kvinna1, kvinna2, kvinna3, dbLoading]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -88,6 +93,7 @@ export function SearchPage() {
     selectedParties.forEach((p) => params.append('party', p));
     if (selectedGender) params.set('gender', selectedGender);
     if (selectedSpeaker) params.set('speaker', selectedSpeaker.toString());
+    if (selectedKammare) params.set('kammare', selectedKammare.toString());
     if (kvinna1 !== undefined) params.set('kvinna_1', kvinna1 ? '1' : '0');
     if (kvinna2 !== undefined) params.set('kvinna_2', kvinna2 ? '1' : '0');
     if (kvinna3 !== undefined) params.set('kvinna_3', kvinna3 ? '1' : '0');
@@ -166,6 +172,24 @@ export function SearchPage() {
               <option value="">All</option>
               <option value="man">Male (♂)</option>
               <option value="woman">Female (♀)</option>
+            </select>
+          </div>
+
+          {/* Chamber Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Chamber
+            </label>
+            <select
+              value={selectedKammare ?? ''}
+              onChange={(e) =>
+                setSelectedKammare(e.target.value ? parseInt(e.target.value) : undefined)
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All</option>
+              <option value="1">Första kammaren</option>
+              <option value="2">Andra kammaren</option>
             </select>
           </div>
 
@@ -276,6 +300,11 @@ export function SearchPage() {
                 {result.snippet || truncateText(result.content, 200)}
               </p>
               <div className="mt-2 flex gap-2">
+                {getChamberLabel(result.kammare) && (
+                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-semibold">
+                    {getChamberLabel(result.kammare)}
+                  </span>
+                )}
                 {result.kvinna_1 && (
                   <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
                     1
