@@ -7,6 +7,7 @@ export interface SearchParams {
   party?: string[];
   gender?: string;
   speaker?: number;
+  kammare?: number;
   kvinna_1?: boolean;
   kvinna_2?: boolean;
   kvinna_3?: boolean;
@@ -24,6 +25,7 @@ export interface SearchResult extends UtteranceWithPerson {
 export interface SearchFilters {
   query: string;
   party: string[];
+  kammare?: number;
   kvinna_1?: boolean;
   kvinna_2?: boolean;
   kvinna_3?: boolean;
