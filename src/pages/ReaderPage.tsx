@@ -7,6 +7,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import type { UtteranceWithPerson } from '@/types/database';
 import { config } from '@/lib/utils/config';
 import { formatDate } from '@/lib/utils/urlHelpers';
+import { getDiscussionLabel } from '@/lib/utils/discussion';
 
 export function ReaderPage() {
   const { year: yearParam, utteranceId } = useParams<{
@@ -449,26 +450,42 @@ export function ReaderPage() {
 
       {/* Utterances */}
       <div className="space-y-4">
-        {utterances.map((utterance, index) => (
-          <div
-            key={utterance.id}
-            ref={(el) => {
-              if (el) {
-                utteranceRefs.current.set(utterance.id, el);
-              } else {
-                utteranceRefs.current.delete(utterance.id);
-              }
-            }}
-            onClick={() => handleUtteranceClick(utterance.id)}
-            className="cursor-pointer"
-          >
-            <UtteranceCard
-              utterance={utterance}
-              highlighted={utterance.id === utteranceId}
-              index={index}
-            />
-          </div>
-        ))}
+        {utterances.map((utterance, index) => {
+          const prev = index > 0 ? utterances[index - 1] : null;
+          const isDiscussionStart =
+            utterance.discussion_id != null &&
+            prev?.discussion_id !== utterance.discussion_id;
+          return (
+            <div key={utterance.id}>
+              {isDiscussionStart && (
+                <div className="my-6 flex items-center gap-3">
+                  <div className="flex-1 h-px bg-emerald-300" />
+                  <span className="px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 rounded-full">
+                    {getDiscussionLabel(utterance.discussion_id)}
+                  </span>
+                  <div className="flex-1 h-px bg-emerald-300" />
+                </div>
+              )}
+              <div
+                ref={(el) => {
+                  if (el) {
+                    utteranceRefs.current.set(utterance.id, el);
+                  } else {
+                    utteranceRefs.current.delete(utterance.id);
+                  }
+                }}
+                onClick={() => handleUtteranceClick(utterance.id)}
+                className="cursor-pointer"
+              >
+                <UtteranceCard
+                  utterance={utterance}
+                  highlighted={utterance.id === utteranceId}
+                  index={index}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Bottom sentinel for infinite scroll */}

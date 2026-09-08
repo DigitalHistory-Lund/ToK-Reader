@@ -9,7 +9,7 @@ export const config = {
   // Database URLs
   databaseBaseUrl: (import.meta.env.DEV && import.meta.env.VITE_USE_REMOTE_DB !== 'true')
     ? '/dbs'
-    : 'https://raw.githubusercontent.com/DigitalHistory-Lund/ToK-Preparer/run',
+    : 'https://raw.githubusercontent.com/DigitalHistory-Lund/ToK-Preparer/main',
 
   // Database filename pattern
   databaseFilename: (year: number) =>
@@ -25,7 +25,7 @@ export const config = {
   },
 
   // Cache settings
-  cacheVersion: '1.2.0',
+  cacheVersion: '1.3.0',
   maxCachedDatabases: 3, // Max databases in memory
   cacheDbName: 'tok-reader-cache',
   cacheStoreName: 'databases',

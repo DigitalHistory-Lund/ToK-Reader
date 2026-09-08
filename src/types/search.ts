@@ -8,6 +8,7 @@ export interface SearchParams {
   gender?: string;
   speaker?: number;
   kammare?: number;
+  hasDiscussion?: boolean;
   kvinna_1?: boolean;
   kvinna_2?: boolean;
   kvinna_3?: boolean;
@@ -26,6 +27,7 @@ export interface SearchFilters {
   query: string;
   party: string[];
   kammare?: number;
+  hasDiscussion?: boolean;
   kvinna_1?: boolean;
   kvinna_2?: boolean;
   kvinna_3?: boolean;

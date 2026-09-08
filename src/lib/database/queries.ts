@@ -545,6 +545,7 @@ function mapRowToUtterance(row: any): UtteranceWithPerson {
     year: row.year,
     date: row.date,
     kammare: row.kammare ?? null,
+    discussion_id: row.discussion_id ?? null,
     kvinna_1: Boolean(row.kvinna_1),
     kvinna_2: Boolean(row.kvinna_2),
     kvinna_3: Boolean(row.kvinna_3),

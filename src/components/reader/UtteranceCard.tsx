@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/urlHelpers';
 import { getPartyColor, getContrastTextColor } from '@/lib/utils/partyColors';
 import { getChamberLabel } from '@/lib/utils/chamber';
+import { getDiscussionLabel } from '@/lib/utils/discussion';
 import type { UtteranceWithPerson } from '@/types/database';
 
 interface UtteranceCardProps {
@@ -75,6 +76,12 @@ export function UtteranceCard({ utterance, highlighted, index = 0 }: UtteranceCa
         {getChamberLabel(utterance.kammare) && (
           <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
             {getChamberLabel(utterance.kammare)}
+          </span>
+        )}
+
+        {getDiscussionLabel(utterance.discussion_id) && (
+          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+            {getDiscussionLabel(utterance.discussion_id)}
           </span>
         )}
 
