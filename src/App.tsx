@@ -5,6 +5,8 @@ import { Layout } from './components/layout/Layout';
 import { HomePage } from './pages/HomePage';
 import { SearchPage } from './pages/SearchPage';
 import { ReaderPage } from './pages/ReaderPage';
+import { DiscussionsPage } from './pages/DiscussionsPage';
+import { DiscussionPage } from './pages/DiscussionPage';
 
 function App() {
   const basename = import.meta.env.DEV ? '/' : '/ToK-Reader';
@@ -17,6 +19,8 @@ function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<HomePage />} />
               <Route path="search" element={<SearchPage />} />
+              <Route path="discussions" element={<DiscussionsPage />} />
+              <Route path="discussion/:discussionId" element={<DiscussionPage />} />
               <Route path=":year/:utteranceId" element={<ReaderPage />} />
             </Route>
           </Routes>

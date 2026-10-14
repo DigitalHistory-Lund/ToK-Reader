@@ -43,3 +43,6 @@ coverage/
 
 # Claude Code (optional, can keep for personal use)
 .claude/
+
+# Local discussion reference files (symlink to ../ToK-Preparer/discussions)
+discussions

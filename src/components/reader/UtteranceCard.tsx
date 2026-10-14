@@ -3,6 +3,7 @@ import { formatDate } from '@/lib/utils/urlHelpers';
 import { getPartyColor, getContrastTextColor } from '@/lib/utils/partyColors';
 import { getChamberLabel } from '@/lib/utils/chamber';
 import { getDiscussionLabel } from '@/lib/utils/discussion';
+import { getGenderSymbol, getGenderStyle } from '@/lib/utils/gender';
 import type { UtteranceWithPerson } from '@/types/database';
 
 interface UtteranceCardProps {
@@ -14,22 +15,6 @@ interface UtteranceCardProps {
 export function UtteranceCard({ utterance, highlighted, index = 0 }: UtteranceCardProps) {
   const partyColor = getPartyColor(utterance.person_party);
   const textColor = getContrastTextColor(partyColor);
-
-  const getGenderSymbol = (gender: string | null): string => {
-    if (!gender) return '';
-    const lower = gender.toLowerCase();
-    if (lower === 'man' || lower === 'män') return '♂';
-    if (lower === 'woman' || lower === 'kvinna') return '♀';
-    return gender;
-  };
-
-  const getGenderStyle = (gender: string | null): string => {
-    if (!gender) return 'text-gray-600';
-    const lower = gender.toLowerCase();
-    if (lower === 'man' || lower === 'män') return 'text-blue-600 font-bold text-lg';
-    if (lower === 'woman' || lower === 'kvinna') return 'text-red-600 font-bold text-lg';
-    return 'text-gray-600';
-  };
 
   return (
     <div
