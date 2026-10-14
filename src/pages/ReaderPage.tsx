@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useDatabase } from '@/hooks/useDatabase';
 import { getUtteranceContext, getUtteranceChain, getPreviousExchange, getNextExchange, getFirstUtterance, getLastExchange, getPreviousKvinnaUtterance, getNextKvinnaUtterance, getPreviousFemaleUtterance, getNextFemaleUtterance, getFirstKvinnaUtterance, getLastKvinnaUtterance, getFirstFemaleUtterance, getLastFemaleUtterance } from '@/lib/database/queries';
 import { UtteranceCard } from '@/components/reader/UtteranceCard';
@@ -8,6 +8,8 @@ import type { UtteranceWithPerson } from '@/types/database';
 import { config } from '@/lib/utils/config';
 import { formatDate } from '@/lib/utils/urlHelpers';
 import { getDiscussionLabel } from '@/lib/utils/discussion';
+import { useDiscussionIndex } from '@/hooks/useDiscussions';
+import { DiscussionFileLinks } from '@/components/discussion/DiscussionFileLinks';
 
 export function ReaderPage() {
   const { year: yearParam, utteranceId } = useParams<{
@@ -18,6 +20,7 @@ export function ReaderPage() {
   const navigate = useNavigate();
 
   const { loading: dbLoading, error: dbError } = useDatabase(year);
+  const { index: discussionIndex } = useDiscussionIndex();
   const [utterances, setUtterances] = useState<UtteranceWithPerson[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState({ top: false, bottom: false });
@@ -455,14 +458,31 @@ export function ReaderPage() {
           const isDiscussionStart =
             utterance.discussion_id != null &&
             prev?.discussion_id !== utterance.discussion_id;
+          const discussion =
+            isDiscussionStart && utterance.discussion_id != null
+              ? discussionIndex?.get(utterance.discussion_id)
+              : undefined;
           return (
             <div key={utterance.id}>
               {isDiscussionStart && (
                 <div className="my-6 flex items-center gap-3">
                   <div className="flex-1 h-px bg-emerald-300" />
-                  <span className="px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 rounded-full">
-                    {getDiscussionLabel(utterance.discussion_id)}
-                  </span>
+                  {discussion ? (
+                    <>
+                      <Link
+                        to={`/discussion/${discussion.id}`}
+                        className="px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 rounded-full hover:bg-emerald-200 transition-colors"
+                        title="Open discussion page"
+                      >
+                        {getDiscussionLabel(utterance.discussion_id)}
+                      </Link>
+                      <DiscussionFileLinks discussion={discussion} />
+                    </>
+                  ) : (
+                    <span className="px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 rounded-full">
+                      {getDiscussionLabel(utterance.discussion_id)}
+                    </span>
+                  )}
                   <div className="flex-1 h-px bg-emerald-300" />
                 </div>
               )}

@@ -12,6 +12,7 @@ Per-year SQLite databases are downloaded on demand and executed in the browser v
 - **Search** within a year by free text, party, gender, speaker, chamber, and *kvinna*-tag annotations.
 - **Per-utterance metadata**: speaker, party, gender, date, chamber, and three layers of *kvinna*-keyword annotations.
 - **Cross-year navigation** to follow individual speakers across the corpus.
+- **Discussions**: browse identified discussions, read each one in full, and download it as PDF, DOCX or JSONL.
 
 ## Tech stack
 
@@ -37,9 +38,19 @@ Place per-year SQLite files in `./dbs/` (named `ToK_data_<year>.sqlite3`) for lo
 Two tables per year:
 
 - `person(id, name, gender, party)`
-- `utterance(id, content, prev, next, person_id, year, date, kammare, kvinna_1, kvinna_2, kvinna_3)`
+- `utterance(id, content, prev, next, person_id, year, date, kammare, discussion_id, kvinna_1, kvinna_2, kvinna_3)`
 
-Utterances form a linked list via `prev`/`next`. `kammare` is `1` (Första kammaren) or `2` (Andra kammaren).
+Utterances form a linked list via `prev`/`next`. `kammare` is `1` (Första kammaren) or `2` (Andra kammaren). `discussion_id` (nullable) groups utterances into discussions.
+
+## Discussions
+
+Per-discussion reference files (`{year}/{date}_{fk|ak}_d{id}.{pdf,docx,jsonl}`) are published in [ToK-Preparer](https://github.com/DigitalHistory-Lund/ToK-Preparer) under `discussions/`. The reader uses a slim metadata index, `public/discussions-index.json`, generated from ToK-Preparer's aggregate `discussions.jsonl.gz`:
+
+```sh
+npm run build:discussions [path/to/discussions.jsonl.gz]   # default: ../ToK-Preparer/discussions/discussions.jsonl.gz
+```
+
+Commit the regenerated index whenever the discussion data changes. Discussion ids are not stable across data versions: `#123` in one release may be a different debate in the next, so cite discussions by date, chamber and data version (DOI). In development the files are served from a local `discussions` symlink (`ln -s ../ToK-Preparer/discussions discussions`); production links to the raw files on ToK-Preparer `main`. Set `VITE_DISCUSSIONS_BRANCH` to link a different branch (e.g. `VITE_USE_REMOTE_DB=true VITE_DISCUSSIONS_BRANCH=issue-8-discussion-files npm run dev`).
 
 ## License
 

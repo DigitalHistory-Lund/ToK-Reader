@@ -12,6 +12,9 @@ export function Header() {
             <Link to="/" className="hover:text-blue-200">
               Home
             </Link>
+            <Link to="/discussions" className="hover:text-blue-200">
+              Discussions
+            </Link>
           </nav>
         </div>
         <p className="text-sm text-blue-100 mt-1">
