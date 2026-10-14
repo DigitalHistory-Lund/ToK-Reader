@@ -45,4 +45,4 @@ coverage/
 .claude/
 
 # Local discussion reference files (symlink to ../ToK-Preparer/discussions)
-discussions
+/discussions
